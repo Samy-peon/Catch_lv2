@@ -107,6 +107,11 @@ const images = loadImages({
   rescue: "rescue.png"
 });
 
+const audio = {
+  mobSpawn: createAudio("MobSound.m4a", { volume: 0.55 }),
+  bossLoop: createAudio("Boss2sound.m4a", { loop: true, volume: 0.5 })
+};
+
 const platformLayout = [
   { x: 150, y: 360, width: 140, height: 18 },
   { x: 410, y: 305, width: 160, height: 18 },
@@ -152,6 +157,30 @@ function loadImages(sourceMap) {
   });
 
   return result;
+}
+
+function createAudio(src, options = {}) {
+  const sound = new Audio(src);
+  sound.preload = "auto";
+  sound.loop = Boolean(options.loop);
+  sound.volume = options.volume ?? 1;
+  return sound;
+}
+
+function playMobSpawnSound() {
+  const sound = audio.mobSpawn.cloneNode();
+  sound.volume = audio.mobSpawn.volume;
+  sound.play().catch(() => {});
+}
+
+function startBossLoop() {
+  audio.bossLoop.currentTime = 0;
+  audio.bossLoop.play().catch(() => {});
+}
+
+function stopBossLoop() {
+  audio.bossLoop.pause();
+  audio.bossLoop.currentTime = 0;
 }
 
 function currentCharacter() {
@@ -214,6 +243,7 @@ function startLevel(levelNumber) {
   failTimer = 0;
   bossDeathTimer = 0;
   pendingMenuLevel = levelNumber;
+  stopBossLoop();
   updateMenuOverlay();
   updateScoreboard();
 }
@@ -236,6 +266,7 @@ function returnToMenu(levelNumber) {
   failTimer = 0;
   bossDeathTimer = 0;
   pendingMenuLevel = levelNumber;
+  stopBossLoop();
   updateMenuOverlay();
   updateScoreboard();
 }
@@ -414,12 +445,10 @@ function updatePlayer(deltaTime) {
 
   if (moveLeft) {
     movement -= CONFIG.moveSpeed;
-    player.facing = "left";
   }
 
   if (moveRight) {
     movement += CONFIG.backwardSpeed;
-    player.facing = "right";
   }
 
   player.velocityX = movement;
@@ -590,15 +619,15 @@ function createFairyBurstProjectile() {
     rotation: 0,
     damage: 0,
     traveledDistance: 0,
-    maxDistance: isLevelThree ? 100 : 300
+    maxDistance: isLevelThree ? 250 : 300
   });
 }
 
 function createBeam() {
   const isLevelThree = currentLevel === 3;
   const direction = player.facing === "left" ? -1 : 1;
-  const beamWidth = isLevelThree ? 18 : canvas.width * 0.5;
-  const beamHeight = isLevelThree ? canvas.height / 6 : 28;
+  const beamWidth = isLevelThree ? 40 : canvas.width * 0.5;
+  const beamHeight = isLevelThree ? 250 : 28;
   const beamX = isLevelThree ? player.x + player.width * 0.5 - beamWidth / 2 : direction === -1 ? player.x - beamWidth : player.x + player.width;
   const beamY = isLevelThree ? player.y - beamHeight : player.y + player.height * 0.45;
 
@@ -674,7 +703,7 @@ function explodeFairyProjectile(projectile) {
       rotation: 0,
       damage: 4,
       traveledDistance: 0,
-      maxDistance: currentLevel === 3 ? 67 : 200
+      maxDistance: 200
     });
   }
 
@@ -729,6 +758,7 @@ function spawnMobs() {
       baseX: LEVEL_THREE_BOUNDS.left + 30 + Math.random() * (LEVEL_THREE_BOUNDS.right - LEVEL_THREE_BOUNDS.left - 60)
     });
     nextMobId += 1;
+    playMobSpawnSound();
     return;
   }
 
@@ -747,6 +777,7 @@ function spawnMobs() {
     baseY: 120 + Math.random() * 260
   });
   nextMobId += 1;
+  playMobSpawnSound();
 }
 
 function updateMobs(deltaTime) {
@@ -946,6 +977,7 @@ function spawnBoss() {
       shotTimer: 0
     };
     updateLevelThreeBossSize();
+    startBossLoop();
     return;
   }
 
@@ -963,6 +995,7 @@ function spawnBoss() {
     isDying: false,
     deathProgress: 0
   };
+  startBossLoop();
 }
 
 function updateBoss(deltaTime) {
@@ -986,7 +1019,7 @@ function updateBoss(deltaTime) {
   boss.y = (currentLevel === 2 ? 110 : 140) + Math.sin(gameTime * 1.8 + boss.waveOffset) * 85;
 
   if (currentLevel === 2) {
-    if (boss.x < 180) {
+    if (boss.x < 260) {
       boss.speed = 85;
     }
 
@@ -994,7 +1027,7 @@ function updateBoss(deltaTime) {
       boss.speed = -85;
     }
   } else {
-    if (boss.x > canvas.width - 250) {
+    if (boss.x > canvas.width - 360) {
       boss.speed = -85;
     }
 
@@ -1085,6 +1118,7 @@ function updateEnemyProjectiles(deltaTime) {
 function checkWinOrLose() {
   if (player.hp <= 0) {
     player.hp = 0;
+    stopBossLoop();
     appState = "failed";
     failTimer = 5;
     pendingMenuLevel = currentLevel;
@@ -1096,6 +1130,7 @@ function beginBossDeathSequence() {
     return;
   }
 
+  stopBossLoop();
   createHitBurst(boss.x + boss.width / 2, boss.y + boss.height / 2, "#fde68a");
   boss.isDying = true;
   boss.hp = 0;
@@ -1380,6 +1415,13 @@ function drawProjectiles() {
     ctx.font = projectileFont;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    if (currentLevel === 3) {
+      ctx.shadowColor =
+        projectile.emoji === "🔥" ? "#fb923c" :
+        projectile.emoji === "🍃" ? "#86efac" :
+        "#ffffff";
+      ctx.shadowBlur = 18;
+    }
     ctx.fillText(projectile.emoji, 0, 0);
     ctx.restore();
   }
@@ -1390,7 +1432,9 @@ function drawButterflyBowProjectile(projectile) {
   ctx.translate(projectile.x, projectile.y);
   ctx.rotate(projectile.rotation || 0);
 
-  ctx.fillStyle = "#f9a8d4";
+  ctx.shadowColor = currentLevel === 3 ? "#f9a8d4" : "transparent";
+  ctx.shadowBlur = currentLevel === 3 ? 18 : 0;
+  ctx.fillStyle = currentLevel === 3 ? "#fbcfe8" : "#f9a8d4";
   ctx.beginPath();
   ctx.ellipse(-10, -6, 10, 7, -0.4, 0, Math.PI * 2);
   ctx.ellipse(10, -6, 10, 7, 0.4, 0, Math.PI * 2);
@@ -1398,12 +1442,12 @@ function drawButterflyBowProjectile(projectile) {
   ctx.ellipse(10, 6, 10, 7, -0.4, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#ec4899";
+  ctx.fillStyle = currentLevel === 3 ? "#ff4fa3" : "#ec4899";
   ctx.beginPath();
   ctx.ellipse(0, 0, 7, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#fde68a";
+  ctx.strokeStyle = currentLevel === 3 ? "#fff08a" : "#fde68a";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(-16, 0);
@@ -1421,6 +1465,10 @@ function drawFairyHeartProjectile(projectile) {
   ctx.font = "22px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  if (currentLevel === 3) {
+    ctx.shadowColor = "#fb7185";
+    ctx.shadowBlur = 16;
+  }
   ctx.fillText("💖", 0, 0);
   ctx.restore();
 }
@@ -1430,17 +1478,30 @@ function drawBeams() {
     const gradient = beam.vertical
       ? ctx.createLinearGradient(0, beam.y, 0, beam.y + beam.height)
       : ctx.createLinearGradient(beam.x, 0, beam.x + beam.width, 0);
-    gradient.addColorStop(0, "rgba(250, 250, 120, 0)");
-    gradient.addColorStop(0.2, "rgba(255, 255, 180, 0.92)");
-    gradient.addColorStop(0.5, "rgba(255, 255, 255, 1)");
-    gradient.addColorStop(0.8, "rgba(255, 255, 180, 0.92)");
-    gradient.addColorStop(1, "rgba(250, 250, 120, 0)");
+    if (currentLevel === 3 && beam.vertical) {
+      gradient.addColorStop(0, "rgba(34, 211, 238, 0)");
+      gradient.addColorStop(0.2, "rgba(103, 232, 249, 0.95)");
+      gradient.addColorStop(0.5, "rgba(255, 255, 255, 1)");
+      gradient.addColorStop(0.8, "rgba(103, 232, 249, 0.95)");
+      gradient.addColorStop(1, "rgba(34, 211, 238, 0)");
+    } else {
+      gradient.addColorStop(0, "rgba(250, 250, 120, 0)");
+      gradient.addColorStop(0.2, "rgba(255, 255, 180, 0.92)");
+      gradient.addColorStop(0.5, "rgba(255, 255, 255, 1)");
+      gradient.addColorStop(0.8, "rgba(255, 255, 180, 0.92)");
+      gradient.addColorStop(1, "rgba(250, 250, 120, 0)");
+    }
     ctx.fillStyle = gradient;
     const beamY = beam.vertical ? beam.y : beam.y - beam.height / 2;
+    if (currentLevel === 3 && beam.vertical) {
+      ctx.shadowColor = "#67e8f9";
+      ctx.shadowBlur = 18;
+    }
     ctx.fillRect(beam.x, beamY, beam.width, beam.height);
     ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
     ctx.lineWidth = 3;
     ctx.strokeRect(beam.x, beamY, beam.width, beam.height);
+    ctx.shadowBlur = 0;
   }
 }
 

@@ -16,6 +16,8 @@ Clear level 1, level 2, and level 3 in sequence before your HP reaches zero.
 - The level flow is now: level 1 ready screen, level 1, level 2 ready screen, level 2, level 3 ready screen, level 3, level 1 ready screen.
 - Level 2 uses `bomb.png` for normal mobs and `boss.png` for the final boss.
 - Level 3 uses `bomb.png` for normal mobs and `boss2.png` for the final boss.
+- `MobSound.m4a` plays when a mob spawns on screen in any level.
+- `Boss2sound.m4a` loops while any boss is alive.
 - When a boss dies, the boss shakes and fades out over about `3 seconds` before the next ready screen appears.
 - If the player loses, the screen darkens and shows `You have failed` for `5 seconds`, then returns to that level's ready screen.
 
@@ -34,8 +36,8 @@ Clear level 1, level 2, and level 3 in sequence before your HP reaches zero.
 ## Player Rules
 
 - The player starts with `10 HP`.
-- The player faces left when moving left.
-- The player faces right when moving right.
+- In level 1, the player faces left and keeps facing left while moving forward or backward.
+- In level 2, the player faces right and keeps facing right while moving forward or backward.
 - Character sprites are flipped horizontally when facing right.
 - The player can run on the ground and jump onto platforms.
 - Gravity pulls the player downward.
@@ -59,15 +61,15 @@ Clear level 1, level 2, and level 3 in sequence before your HP reaches zero.
 - `Lightning` uses `light.png`.
 - Lightning fires a bright `⚡` laser beam that reaches about half the screen width.
 - Lightning beams deal `25` damage.
-- In level 3, the lightning beam range is reduced to one third of the earlier top-down version.
+- In level 3, the lightning beam is `250px` long and `40px` wide.
 - `Fairy` uses `char.png`.
 - Fairy launches a non-interactive butterfly bow projectile forward for about `300px`.
+- In level 3, Fairy's main projectile travels about `250px` upward.
 - Fairy can keep up to `4` butterfly bow main projectiles active at once.
 - When the butterfly bow reaches its endpoint, it explodes into `8` heart emoji projectiles in all directions.
 - Each heart projectile travels about `200px`.
 - Each heart projectile deals `4` damage during its first `100px` of travel.
 - Each heart projectile deals `10` damage after it has traveled more than `100px`.
-- In level 3, Fairy's projectile ranges are reduced to one third of the earlier top-down version.
 
 ## Mob Rules
 
@@ -96,7 +98,8 @@ Clear level 1, level 2, and level 3 in sequence before your HP reaches zero.
 - Beating the level 3 boss sends the game back to the level 1 ready screen.
 - The level 2 boss uses `boss.png`.
 - The level 3 boss uses `boss2.png`.
-- In level 2, the boss enters from the right side of the screen.
+- In level 2, the boss enters from the right side of the screen and does not come too close to the left side.
+- In level 1, the boss does not come too close to the right side.
 - In level 3, the boss stays in the top area of the screen and never moves down into the playfield.
 - In level 3, the boss has `5` size tiers and shrinks as its HP drops.
 - Level 3 boss tier 1 is `3x` player size.
@@ -125,6 +128,7 @@ Clear level 1, level 2, and level 3 in sequence before your HP reaches zero.
 - In level 3, the play style shifts toward a simple top-down arena with vertical enemy pressure from above.
 - Level 3 uses side borders on the left and right to narrow the play area.
 - Level 3 terrain is shown with sporadic dirt lines and simple doodads like grass, stones, and dirt rather than green perspective lines.
+- In level 3, weapon projectiles are rendered with brighter, more vibrant visuals for readability.
 
 ## Win Condition
 
@@ -153,6 +157,8 @@ Place these image files in the same folder as `index.html`:
 - `boss.png`: level 2 boss
 - `boss2.png`: level 3 boss
 - `rescue.png`: level 3 boss projectile
+- `MobSound.m4a`: mob spawn sound
+- `Boss2sound.m4a`: looping boss sound
 
 ## Easy Gameplay Tuning
 

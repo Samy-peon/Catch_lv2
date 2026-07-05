@@ -13,6 +13,7 @@ const menuDescription = document.getElementById("menuDescription");
 const characterButtons = Array.from(document.querySelectorAll(".character-card"));
 const startButton = document.getElementById("startButton");
 const restartButton = document.getElementById("restartButton");
+const touchButtons = Array.from(document.querySelectorAll(".touch-button"));
 
 const CONFIG = {
   playerMaxHp: 10,
@@ -335,6 +336,27 @@ window.addEventListener("keydown", (event) => {
 
 window.addEventListener("keyup", (event) => {
   keys[event.key.toLowerCase()] = false;
+});
+
+touchButtons.forEach((button) => {
+  const key = button.dataset.key;
+
+  const press = (event) => {
+    event.preventDefault();
+    keys[key] = true;
+    button.classList.add("is-pressed");
+  };
+
+  const release = (event) => {
+    event.preventDefault();
+    keys[key] = false;
+    button.classList.remove("is-pressed");
+  };
+
+  button.addEventListener("pointerdown", press);
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", release);
+  button.addEventListener("pointerleave", release);
 });
 
 function isJumpPressed() {

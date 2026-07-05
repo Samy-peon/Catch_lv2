@@ -27,6 +27,7 @@ Clear level 1, level 2, and level 3 in sequence before your HP reaches zero.
 - `ArrowRight` or `D`: move right
 - `ArrowUp`: jump
 - `Space`: shoot in the direction the player is facing
+- On iPad or touch devices, use the on-screen arrow pad and the `Shoot` button.
 
 ## Level 3 Controls
 

@@ -100,6 +100,8 @@ h1 {
 
 .canvas-wrap {
   position: relative;
+  overflow: hidden;
+  border-radius: 18px;
 }
 
 #gameCanvas {
@@ -112,6 +114,70 @@ h1 {
   image-rendering: auto;
 }
 
+.touch-controls {
+  position: absolute;
+  inset: auto 18px 18px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: end;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.touch-pad {
+  width: min(280px, 100%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(60px, 1fr));
+  gap: 10px;
+}
+
+.pad-spacer {
+  min-height: 60px;
+}
+
+.touch-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.touch-button {
+  min-height: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 18px;
+  color: #f8fafc;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.touch-button.direction {
+  font-size: 1.6rem;
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.26), rgba(15, 23, 42, 0.36));
+}
+
+.touch-button.action {
+  min-width: 168px;
+  padding: 0 22px;
+  font-size: 1.08rem;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(239, 68, 68, 0.34));
+}
+
+.touch-button.is-pressed {
+  transform: translateY(1px) scale(0.98);
+  background: rgba(255, 255, 255, 0.22);
+  filter: brightness(1.18);
+}
+
 .menu-overlay {
   position: absolute;
   inset: 0;
@@ -121,6 +187,7 @@ h1 {
   padding: 22px;
   border-radius: 18px;
   background: rgba(7, 17, 32, 0.72);
+  z-index: 4;
 }
 
 .menu-overlay[hidden] {
@@ -234,6 +301,16 @@ h1 {
   .scoreboard {
     width: 100%;
   }
+
+  .touch-controls {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .touch-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 640px) {
@@ -251,5 +328,23 @@ h1 {
 
   .character-grid {
     grid-template-columns: 1fr;
+  }
+
+  .touch-controls {
+    inset: auto 12px 12px 12px;
+    gap: 14px;
+  }
+
+  .touch-pad {
+    width: min(190px, 52vw);
+  }
+
+  .touch-button {
+    min-height: 52px;
+  }
+
+  .touch-button.action {
+    min-width: 112px;
+    padding: 0 16px;
   }
 }

@@ -13,8 +13,16 @@ const menuDescription = document.getElementById("menuDescription");
 const characterButtons = Array.from(document.querySelectorAll(".character-card"));
 const startButton = document.getElementById("startButton");
 const restartButton = document.getElementById("restartButton");
+const gameShell = document.querySelector(".game-shell");
+const gameHeader = document.querySelector(".game-header");
 const gameSurface = document.querySelector(".game-surface");
+const canvasWrap = document.querySelector(".canvas-wrap");
 const touchButtons = Array.from(document.querySelectorAll(".touch-button"));
+
+const BASE_CANVAS = {
+  width: 960,
+  height: 540
+};
 
 const CONFIG = {
   playerMaxHp: 10,
@@ -130,18 +138,18 @@ const audio = {
 };
 
 const platformLayout = [
-  { x: 90, y: 392, width: 130, height: 18 },
-  { x: 260, y: 332, width: 120, height: 18 },
-  { x: 430, y: 268, width: 140, height: 18 },
-  { x: 610, y: 380, width: 150, height: 18 },
-  { x: 785, y: 238, width: 120, height: 18 },
-  { x: 940, y: 320, width: 145, height: 18 },
-  { x: 1120, y: 198, width: 120, height: 18 },
-  { x: 1280, y: 360, width: 150, height: 18 },
-  { x: 1470, y: 286, width: 130, height: 18 },
-  { x: 1640, y: 220, width: 115, height: 18 },
-  { x: 1790, y: 346, width: 155, height: 18 },
-  { x: 1980, y: 252, width: 135, height: 18 }
+  { x: 90, width: 130, height: 18, yRatio: 0.12 },
+  { x: 260, width: 120, height: 18, yRatio: 0.32 },
+  { x: 430, width: 140, height: 18, yRatio: 0.56 },
+  { x: 610, width: 150, height: 18, yRatio: 0.18 },
+  { x: 785, width: 120, height: 18, yRatio: 0.78 },
+  { x: 940, width: 145, height: 18, yRatio: 0.42 },
+  { x: 1120, width: 120, height: 18, yRatio: 0.92 },
+  { x: 1280, width: 150, height: 18, yRatio: 0.24 },
+  { x: 1470, width: 130, height: 18, yRatio: 0.48 },
+  { x: 1640, width: 115, height: 18, yRatio: 0.7 },
+  { x: 1790, width: 155, height: 18, yRatio: 0.3 },
+  { x: 1980, width: 135, height: 18, yRatio: 0.84 }
 ];
 
 let player;
@@ -228,6 +236,138 @@ function getBackgroundDirection() {
   return 0;
 }
 
+function updateWorldMetrics() {
+  const heightScale = canvas.height / BASE_CANVAS.height;
+  const widthScale = canvas.width / BASE_CANVAS.width;
+  const playableBottomInset = Math.max(110 * heightScale, 100);
+  world.width = canvas.width;
+  world.height = canvas.height;
+  world.groundY = canvas.height - playableBottomInset;
+  LEVEL_THREE_BOUNDS.left = Math.round(180 * widthScale);
+  LEVEL_THREE_BOUNDS.right = canvas.width - Math.round(180 * widthScale);
+  LEVEL_THREE_BOUNDS.top = Math.round(18 * heightScale);
+  LEVEL_THREE_BOUNDS.bottom = canvas.height - playableBottomInset;
+}
+
+function getSideScrollerVerticalRange() {
+  const heightScale = canvas.height / BASE_CANVAS.height;
+  const top = Math.round(120 * heightScale);
+  const bottom = world.groundY - Math.round(58 * heightScale);
+  return { top, bottom };
+}
+
+function getPlatformYFromRatio(yRatio) {
+  const { top, bottom } = getSideScrollerVerticalRange();
+  return Math.round(bottom - (bottom - top) * yRatio);
+}
+
+function buildPlatforms() {
+  const widthScale = canvas.width / BASE_CANVAS.width;
+  const heightScale = canvas.height / BASE_CANVAS.height;
+  return platformLayout.map((platform) => ({
+    ...platform,
+    x: Math.round(platform.x * widthScale),
+    width: Math.round(platform.width * widthScale),
+    height: Math.max(14, Math.round(platform.height * heightScale)),
+    y: getPlatformYFromRatio(platform.yRatio)
+  }));
+}
+
+function resizeGameCanvas() {
+  const shellStyles = window.getComputedStyle(gameShell);
+  const shellPaddingX =
+    parseFloat(shellStyles.paddingLeft || "0") +
+    parseFloat(shellStyles.paddingRight || "0");
+  const shellPaddingY =
+    parseFloat(shellStyles.paddingTop || "0") +
+    parseFloat(shellStyles.paddingBottom || "0");
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const availableWidth = Math.max(
+    320,
+    Math.min(1400, viewportWidth - shellPaddingX - 40)
+  );
+  const headerHeight = gameHeader.getBoundingClientRect().height;
+  const availableHeight = Math.max(
+    240,
+    viewportHeight - headerHeight - shellPaddingY - 54
+  );
+  const targetWidth = Math.round(availableWidth);
+  const targetHeight = Math.round(availableHeight);
+
+  if (!targetWidth || !targetHeight) {
+    return;
+  }
+
+  const previousWidth = canvas.width;
+  const previousHeight = canvas.height;
+  canvasWrap.style.width = `${targetWidth}px`;
+  canvasWrap.style.height = `${targetHeight}px`;
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  updateWorldMetrics();
+
+  if (!previousWidth || !previousHeight || !player) {
+    return;
+  }
+
+  const scaleX = canvas.width / previousWidth;
+  const scaleY = canvas.height / previousHeight;
+
+  player.x *= scaleX;
+  player.y *= scaleY;
+  player.jumpStartY *= scaleY;
+
+  for (const platform of platforms || []) {
+    platform.x *= scaleX;
+    if ("yRatio" in platform) {
+      platform.y = getPlatformYFromRatio(platform.yRatio);
+    } else {
+      platform.y *= scaleY;
+    }
+  }
+
+  for (const mob of mobs || []) {
+    mob.x *= scaleX;
+    mob.y *= scaleY;
+    if ("baseY" in mob) {
+      mob.baseY *= scaleY;
+    }
+    if ("baseX" in mob) {
+      mob.baseX *= scaleX;
+    }
+  }
+
+  for (const projectile of projectiles || []) {
+    projectile.x *= scaleX;
+    projectile.y *= scaleY;
+  }
+
+  for (const enemyProjectile of enemyProjectiles || []) {
+    enemyProjectile.x *= scaleX;
+    enemyProjectile.y *= scaleY;
+  }
+
+  for (const particle of particles || []) {
+    particle.x *= scaleX;
+    particle.y *= scaleY;
+  }
+
+  for (const text of combatTexts || []) {
+    text.x *= scaleX;
+    text.y *= scaleY;
+  }
+
+  if (boss) {
+    boss.x *= scaleX;
+    boss.y *= scaleY;
+  }
+
+  player.x = clamp(player.x, 0, canvas.width - player.width);
+  player.y = clamp(player.y, 0, canvas.height - player.height);
+}
+
 function buildPlayer() {
   const startX =
     currentLevel === 2 ? canvas.width * 0.18 :
@@ -261,7 +401,7 @@ function startLevel(levelNumber) {
   combatTexts = [];
   beams = [];
   enemyProjectiles = [];
-  platforms = platformLayout.map((platform) => ({ ...platform }));
+  platforms = buildPlatforms();
   gameTime = 0;
   lastShotTime = -CONFIG.projectileCooldown;
   lastSpawnTime = 0;
@@ -291,7 +431,7 @@ function returnToMenu(levelNumber) {
   combatTexts = [];
   beams = [];
   enemyProjectiles = [];
-  platforms = platformLayout.map((platform) => ({ ...platform }));
+  platforms = buildPlatforms();
   gameTime = 0;
   mobsKilled = 0;
   damageFlashTime = 0;
@@ -510,11 +650,11 @@ function updatePlatforms(deltaTime) {
     if (direction === -1 && platform.x + platform.width < -80) {
       const rightmostX = Math.max(...platforms.map((item) => item.x + item.width));
       platform.x = rightmostX + 95 + Math.random() * 90;
-      platform.y = 180 + Math.random() * 230;
+      platform.y = getPlatformYFromRatio(0.08 + Math.random() * 0.84);
     } else if (direction === 1 && platform.x > canvas.width + 80) {
       const leftmostX = Math.min(...platforms.map((item) => item.x));
       platform.x = leftmostX - platform.width - 95 - Math.random() * 90;
-      platform.y = 180 + Math.random() * 230;
+      platform.y = getPlatformYFromRatio(0.08 + Math.random() * 0.84);
     }
   }
 }
@@ -903,10 +1043,11 @@ function spawnMobs() {
   }
 
   const spawnFromRight = currentLevel === 2;
+  const sideRange = getSideScrollerVerticalRange();
   mobs.push({
     id: nextMobId,
     x: spawnFromRight ? canvas.width + 90 : -90,
-    y: 120 + Math.random() * 260,
+    y: sideRange.top + Math.random() * Math.max(40, sideRange.bottom - sideRange.top),
     width: 58,
     height: 58,
     hp: 10,
@@ -914,7 +1055,7 @@ function spawnMobs() {
       (CONFIG.mobSpeedMin + Math.random() * (CONFIG.mobSpeedMax - CONFIG.mobSpeedMin)),
     waveOffset: Math.random() * Math.PI * 2,
     waveSpeed: 3 + Math.random() * 2,
-    baseY: 120 + Math.random() * 260
+    baseY: sideRange.top + Math.random() * Math.max(40, sideRange.bottom - sideRange.top)
   });
   nextMobId += 1;
   playMobSpawnSound();
@@ -1175,9 +1316,11 @@ function spawnBoss() {
   }
 
   const spawnFromRight = currentLevel === 2;
+  const sideRange = getSideScrollerVerticalRange();
+  const bossBaseY = sideRange.top + Math.max(18, (sideRange.bottom - sideRange.top) * 0.18);
   boss = {
     x: spawnFromRight ? canvas.width + 220 : -220,
-    y: currentLevel === 2 ? 120 : 150,
+    y: bossBaseY,
     width: currentLevel === 2 ? 210 : 180,
     height: currentLevel === 2 ? 210 : 180,
     hp: currentLevelConfig().bossHp,
@@ -1209,8 +1352,11 @@ function updateBoss(deltaTime) {
     return;
   }
 
+  const sideRange = getSideScrollerVerticalRange();
+  const bossBaseY = sideRange.top + Math.max(18, (sideRange.bottom - sideRange.top) * 0.18);
+  const bossWaveAmplitude = Math.max(36, (sideRange.bottom - sideRange.top) * 0.24);
   boss.x += boss.speed * deltaTime;
-  boss.y = (currentLevel === 2 ? 110 : 140) + Math.sin(gameTime * 1.8 + boss.waveOffset) * 85;
+  boss.y = bossBaseY + Math.sin(gameTime * 1.8 + boss.waveOffset) * bossWaveAmplitude;
   boss.shotTimer += deltaTime;
 
   if (currentLevel === 2) {
@@ -1990,6 +2136,9 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
+window.addEventListener("resize", resizeGameCanvas);
+
+resizeGameCanvas();
 selectCharacter(selectedCharacterKey);
 returnToMenu(1);
 requestAnimationFrame(gameLoop);

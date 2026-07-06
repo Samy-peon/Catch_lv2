@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elemental Side Scroller</title>
+  <title>2D Shooter</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
       <header class="game-header">
         <div>
           <p class="eyebrow">Retro Browser Adventure Reloaded</p>
-          <h1>Elemental Side Scroller</h1>
+          <h1>2D Shooter</h1>
         </div>
         <div class="scoreboard" aria-label="Game scoreboard">
           <div class="score-card">
@@ -20,7 +20,7 @@
             <strong id="killsValue">0</strong>
           </div>
           <div class="score-card">
-            <span class="label">Time Elapsed</span>
+            <span class="label">Time</span>
             <strong id="timeValue">0s</strong>
           </div>
           <div class="score-card">
@@ -35,39 +35,49 @@
       </header>
 
       <section class="game-frame">
-        <div class="canvas-wrap">
+        <div class="canvas-wrap game-surface">
           <canvas id="gameCanvas" width="960" height="540" aria-label="2D side scroller game area"></canvas>
           <section id="menuOverlay" class="menu-overlay" aria-live="polite">
             <div class="menu-card">
               <p class="menu-kicker" id="menuKicker">Level 1</p>
-              <h2 id="menuTitle">Choose Your Hero</h2>
+              <div class="menu-title-row">
+                <h2 id="menuTitle">Choose Your Hero</h2>
+                <button id="startButton" class="action-button" type="button">Start Game</button>
+              </div>
               <p id="menuDescription">Pick a character, then press Start to begin level 1.</p>
 
               <div class="character-grid" id="characterGrid">
                 <button class="character-card is-selected" data-character="fire" type="button">
                   <img src="fire.png" alt="Fire character">
-                  <strong>Fire</strong>
-                  <span>Fireball</span>
+                  <span class="character-copy">
+                    <strong>Fire</strong>
+                    <span>Fireball</span>
+                  </span>
                 </button>
                 <button class="character-card" data-character="leaf" type="button">
                   <img src="leaf.png" alt="Leaf character">
-                  <strong>Leaf</strong>
-                  <span>Triple leaf spread</span>
+                  <span class="character-copy">
+                    <strong>Leaf</strong>
+                    <span>Triple leaf spread</span>
+                  </span>
                 </button>
                 <button class="character-card" data-character="lightning" type="button">
                   <img src="light.png" alt="Lightning character">
-                  <strong>Lightning</strong>
-                  <span>Short laser beam</span>
+                  <span class="character-copy">
+                    <strong>Lightning</strong>
+                    <span>Short laser beam</span>
+                  </span>
                 </button>
                 <button class="character-card" data-character="fairy" type="button">
                   <img src="char.png" alt="Fairy character">
-                  <strong>Fairy</strong>
-                  <span>Butterfly burst bow</span>
+                  <span class="character-copy">
+                    <strong>Fairy</strong>
+                    <span>Butterfly burst bow</span>
+                  </span>
                 </button>
               </div>
 
               <div class="menu-actions">
-                <button id="startButton" class="action-button" type="button">Start Game</button>
                 <button id="restartButton" class="action-button secondary" type="button" hidden>Back To Level 1 Menu</button>
               </div>
             </div>

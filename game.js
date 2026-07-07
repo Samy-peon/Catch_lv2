@@ -34,6 +34,7 @@ const CONFIG = {
   projectileCooldown: 260,
   backgroundScrollSpeed: 180,
   mobSpawnInterval: 1400,
+  flyerSpawnInterval: 5000,
   mobSpeedMin: 180,
   mobSpeedMax: 280
 };
@@ -42,7 +43,7 @@ const SIDE_SCROLLER_CONFIG = {
   gravity: 2200,
   jumpVelocity: 1200,
   moveSpeed: CONFIG.moveSpeed * 1.5,
-  backwardSpeed: CONFIG.backwardSpeed * 1.5,
+  backwardSpeed: CONFIG.moveSpeed * 1.5,
   maxJumpRise: 280,
   dropThroughTime: 0.2
 };
@@ -51,6 +52,18 @@ const LEVEL_THREE_CONFIG = {
   moveSpeed: 400,
   mobSpeedScale: 0.7,
   mobWaveAmplitude: 60
+};
+
+const FLYER_CONFIG = {
+  hp: 30,
+  size: 64,
+  sideWaveAmplitude: 96,
+  topDownWaveAmplitude: 130,
+  sideWaveSpeedMin: 1.3,
+  sideWaveSpeedMax: 2.1,
+  topDownWaveSpeedMin: 1,
+  topDownWaveSpeedMax: 1.6,
+  speedMultiplier: 0.55
 };
 
 const LEVEL_CONFIGS = {
@@ -126,6 +139,7 @@ const images = loadImages({
   leaf: "leaf.png",
   lightning: "light.png",
   fairy: "char.png",
+  flyer: "bullet.png",
   bomb: "bomb.png",
   boss: "boss.png",
   boss2: "boss2.png",
@@ -165,6 +179,7 @@ let gameTime;
 let lastTimestamp = 0;
 let lastShotTime;
 let lastSpawnTime;
+let lastFlyerSpawnTime;
 let mobsKilled;
 let currentLevel = 1;
 let appState = "menu";
@@ -246,7 +261,7 @@ function updateWorldMetrics() {
   LEVEL_THREE_BOUNDS.left = Math.round(180 * widthScale);
   LEVEL_THREE_BOUNDS.right = canvas.width - Math.round(180 * widthScale);
   LEVEL_THREE_BOUNDS.top = Math.round(18 * heightScale);
-  LEVEL_THREE_BOUNDS.bottom = canvas.height - playableBottomInset;
+  LEVEL_THREE_BOUNDS.bottom = canvas.height;
 }
 
 function getSideScrollerVerticalRange() {
@@ -391,6 +406,105 @@ function buildPlayer() {
   };
 }
 
+function createTopDownMob(overrides = {}) {
+  const size = overrides.size ?? 58;
+  const lanePadding = 30;
+  const baseX =
+    LEVEL_THREE_BOUNDS.left +
+    lanePadding +
+    Math.random() * (LEVEL_THREE_BOUNDS.right - LEVEL_THREE_BOUNDS.left - lanePadding * 2);
+
+  return {
+    id: nextMobId++,
+    kind: "mob",
+    imageKey: "bomb",
+    x: baseX,
+    y: -90,
+    width: size,
+    height: size,
+    hp: 10,
+    speed:
+      (CONFIG.mobSpeedMin * 0.9 + Math.random() * (CONFIG.mobSpeedMax - CONFIG.mobSpeedMin)) *
+      LEVEL_THREE_CONFIG.mobSpeedScale,
+    waveOffset: Math.random() * Math.PI * 2,
+    waveSpeed: 2.2 + Math.random() * 1.4,
+    waveAmplitude: LEVEL_THREE_CONFIG.mobWaveAmplitude,
+    baseX,
+    ...overrides
+  };
+}
+
+function createSideScrollerMob(overrides = {}) {
+  const spawnFromRight = currentLevel === 2;
+  const sideRange = getSideScrollerVerticalRange();
+  const baseY = sideRange.top + Math.random() * Math.max(40, sideRange.bottom - sideRange.top);
+  const size = overrides.size ?? 58;
+
+  return {
+    id: nextMobId++,
+    kind: "mob",
+    imageKey: "bomb",
+    x: spawnFromRight ? canvas.width + 90 : -90,
+    y: baseY,
+    width: size,
+    height: size,
+    hp: 10,
+    speed:
+      (spawnFromRight ? -1 : 1) *
+      (CONFIG.mobSpeedMin + Math.random() * (CONFIG.mobSpeedMax - CONFIG.mobSpeedMin)),
+    waveOffset: Math.random() * Math.PI * 2,
+    waveSpeed: 3 + Math.random() * 2,
+    waveAmplitude: 34,
+    baseY,
+    ...overrides
+  };
+}
+
+function spawnNormalMob() {
+  mobs.push(currentLevel === 3 ? createTopDownMob() : createSideScrollerMob());
+}
+
+function spawnFlyer() {
+  if (currentLevel === 3) {
+    const flyer = createTopDownMob({
+      kind: "flyer",
+      imageKey: "flyer",
+      width: FLYER_CONFIG.size,
+      height: FLYER_CONFIG.size,
+      hp: FLYER_CONFIG.hp,
+      speed:
+        (CONFIG.mobSpeedMin * 0.9 + Math.random() * (CONFIG.mobSpeedMax - CONFIG.mobSpeedMin)) *
+        LEVEL_THREE_CONFIG.mobSpeedScale *
+        FLYER_CONFIG.speedMultiplier,
+      waveSpeed:
+        FLYER_CONFIG.topDownWaveSpeedMin +
+        Math.random() * (FLYER_CONFIG.topDownWaveSpeedMax - FLYER_CONFIG.topDownWaveSpeedMin),
+      waveAmplitude: FLYER_CONFIG.topDownWaveAmplitude
+    });
+    mobs.push(flyer);
+  } else {
+    const spawnFromRight = currentLevel === 2;
+    const flyer = createSideScrollerMob({
+      kind: "flyer",
+      imageKey: "flyer",
+      width: FLYER_CONFIG.size,
+      height: FLYER_CONFIG.size,
+      hp: FLYER_CONFIG.hp,
+      speed:
+        (spawnFromRight ? -1 : 1) *
+        (CONFIG.mobSpeedMin + Math.random() * (CONFIG.mobSpeedMax - CONFIG.mobSpeedMin)) *
+        FLYER_CONFIG.speedMultiplier,
+      waveSpeed:
+        FLYER_CONFIG.sideWaveSpeedMin +
+        Math.random() * (FLYER_CONFIG.sideWaveSpeedMax - FLYER_CONFIG.sideWaveSpeedMin),
+      waveAmplitude: FLYER_CONFIG.sideWaveAmplitude
+    });
+    mobs.push(flyer);
+  }
+
+  playMobSpawnSound();
+}
+
 function startLevel(levelNumber) {
   currentLevel = levelNumber;
   player = buildPlayer();
@@ -405,6 +519,7 @@ function startLevel(levelNumber) {
   gameTime = 0;
   lastShotTime = -CONFIG.projectileCooldown;
   lastSpawnTime = 0;
+  lastFlyerSpawnTime = 0;
   mobsKilled = 0;
   damageFlashTime = 0;
   damageInvulnTime = 0;
@@ -433,6 +548,8 @@ function returnToMenu(levelNumber) {
   enemyProjectiles = [];
   platforms = buildPlatforms();
   gameTime = 0;
+  lastSpawnTime = 0;
+  lastFlyerSpawnTime = 0;
   mobsKilled = 0;
   damageFlashTime = 0;
   damageInvulnTime = 0;
@@ -788,7 +905,11 @@ function updateTopDownPlayer(deltaTime) {
   player.x += player.velocityX * deltaTime;
   player.y += player.velocityY * deltaTime;
   player.x = clamp(player.x, LEVEL_THREE_BOUNDS.left + 12, LEVEL_THREE_BOUNDS.right - player.width - 12);
-  player.y = clamp(player.y, 120, LEVEL_THREE_BOUNDS.bottom - player.height - 12);
+  player.y = clamp(
+    player.y,
+    LEVEL_THREE_BOUNDS.top + 12,
+    LEVEL_THREE_BOUNDS.bottom - player.height - 12
+  );
   player.onGround = false;
 
   const shootPressed = isShootPressed();
@@ -1019,46 +1140,15 @@ function spawnMobs() {
   }
 
   const currentTimeMs = gameTime * 1000;
-  if (currentTimeMs - lastSpawnTime < CONFIG.mobSpawnInterval) {
-    return;
+  if (currentTimeMs - lastSpawnTime >= CONFIG.mobSpawnInterval) {
+    lastSpawnTime = currentTimeMs;
+    spawnNormalMob();
   }
 
-  lastSpawnTime = currentTimeMs;
-  if (currentLevel === 3) {
-    mobs.push({
-      id: nextMobId,
-      x: LEVEL_THREE_BOUNDS.left + 30 + Math.random() * (LEVEL_THREE_BOUNDS.right - LEVEL_THREE_BOUNDS.left - 60),
-      y: -90,
-      width: 58,
-      height: 58,
-      hp: 10,
-      speed: (CONFIG.mobSpeedMin * 0.9 + Math.random() * (CONFIG.mobSpeedMax - CONFIG.mobSpeedMin)) * LEVEL_THREE_CONFIG.mobSpeedScale,
-      waveOffset: Math.random() * Math.PI * 2,
-      waveSpeed: 2.2 + Math.random() * 1.4,
-      baseX: LEVEL_THREE_BOUNDS.left + 30 + Math.random() * (LEVEL_THREE_BOUNDS.right - LEVEL_THREE_BOUNDS.left - 60)
-    });
-    nextMobId += 1;
-    playMobSpawnSound();
-    return;
+  if (currentTimeMs - lastFlyerSpawnTime >= CONFIG.flyerSpawnInterval) {
+    lastFlyerSpawnTime = currentTimeMs;
+    spawnFlyer();
   }
-
-  const spawnFromRight = currentLevel === 2;
-  const sideRange = getSideScrollerVerticalRange();
-  mobs.push({
-    id: nextMobId,
-    x: spawnFromRight ? canvas.width + 90 : -90,
-    y: sideRange.top + Math.random() * Math.max(40, sideRange.bottom - sideRange.top),
-    width: 58,
-    height: 58,
-    hp: 10,
-    speed: (spawnFromRight ? -1 : 1) *
-      (CONFIG.mobSpeedMin + Math.random() * (CONFIG.mobSpeedMax - CONFIG.mobSpeedMin)),
-    waveOffset: Math.random() * Math.PI * 2,
-    waveSpeed: 3 + Math.random() * 2,
-    baseY: sideRange.top + Math.random() * Math.max(40, sideRange.bottom - sideRange.top)
-  });
-  nextMobId += 1;
-  playMobSpawnSound();
 }
 
 function updateMobs(deltaTime) {
@@ -1069,7 +1159,7 @@ function updateMobs(deltaTime) {
 
   for (const mob of mobs) {
     mob.x += mob.speed * deltaTime;
-    mob.y = mob.baseY + Math.sin(gameTime * mob.waveSpeed + mob.waveOffset) * 34;
+    mob.y = mob.baseY + Math.sin(gameTime * mob.waveSpeed + mob.waveOffset) * (mob.waveAmplitude ?? 34);
   }
 
   handleProjectileHits();
@@ -1090,7 +1180,7 @@ function updateMobs(deltaTime) {
 function updateTopDownMobs(deltaTime) {
   for (const mob of mobs) {
     mob.y += mob.speed * deltaTime;
-    mob.x = mob.baseX + Math.sin(gameTime * mob.waveSpeed + mob.waveOffset) * LEVEL_THREE_CONFIG.mobWaveAmplitude;
+    mob.x = mob.baseX + Math.sin(gameTime * mob.waveSpeed + mob.waveOffset) * (mob.waveAmplitude ?? LEVEL_THREE_CONFIG.mobWaveAmplitude);
     mob.x = clamp(mob.x, LEVEL_THREE_BOUNDS.left + 8, LEVEL_THREE_BOUNDS.right - mob.width - 8);
   }
 
@@ -2012,7 +2102,7 @@ function drawLightningHitSpark(targetPoint) {
 
 function drawMobs() {
   for (const mob of mobs) {
-    drawSprite(images[currentLevelConfig().mobImage], mob.x, mob.y, mob.width, mob.height);
+    drawSprite(images[mob.imageKey || currentLevelConfig().mobImage], mob.x, mob.y, mob.width, mob.height);
   }
 }
 
